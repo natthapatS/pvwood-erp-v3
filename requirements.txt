@@ -1,0 +1,26 @@
+# PVWood ERP v3 — Python dependencies (Python 3.14).
+# Floors only for now; pin exact versions after the first clean `pip install`
+# validates the resolved set on this machine.
+
+# ── Web framework + ASGI server ──────────────────────────
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.12          # FastAPI File/UploadFile (PDF/doc imports)
+
+# ── ORM + migrations ─────────────────────────────────────
+sqlmodel>=0.0.22                  # pulls SQLAlchemy 2.x + Pydantic v2
+alembic>=1.13
+psycopg[binary]>=3.2              # PostgreSQL driver (SQLAlchemy 'postgresql+psycopg')
+
+# ── Config ───────────────────────────────────────────────
+pydantic-settings>=2.6
+
+# ── AI integration (Factory Assistant, ported in a later phase) ──
+anthropic>=0.40
+httpx>=0.28
+
+# ── Spreadsheet import (material/BOM seed scripts) ───────
+openpyxl>=3.1
+
+# NOTE (Stage 2): barcode label generation (e.g. `segno` for QR/DataMatrix)
+# is added when the mobile-scan phase starts, not before.

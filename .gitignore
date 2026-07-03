@@ -1,0 +1,30 @@
+# ── Secrets / local config ───────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# ── Databases / dumps (never commit data) ────────────────
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+
+# ── Editor / OS ──────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Generated ────────────────────────────────────────────
+/exports/
