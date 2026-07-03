@@ -104,3 +104,14 @@ class StationCode(str, enum.Enum):
     PACKING = "packing"              # centralised
     FG_RECEIVING = "fg_receiving"    # centralised
     FG_WAREHOUSE = "fg_warehouse"    # centralised
+
+
+class ItemKind(str, enum.Enum):
+    """Discriminator for the polymorphic Item catalog (<- legacy materials.type)."""
+
+    VENEER = "VENEER"
+    BOARD = "BOARD"
+    GLUE_COMPONENT = "GLUE_COMPONENT"
+    CONSUMABLE = "CONSUMABLE"
+    PACKING = "PACKING"
+    OTHER = "OTHER"
