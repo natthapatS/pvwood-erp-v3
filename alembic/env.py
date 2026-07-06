@@ -6,6 +6,7 @@ every domain module, so autogenerate sees all tables. The DB URL comes from
 """
 from logging.config import fileConfig
 
+import alembic_postgresql_enum  # noqa: F401  (auto-manages PG enum create/reuse/alter)
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 

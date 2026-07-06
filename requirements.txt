@@ -10,6 +10,7 @@ python-multipart>=0.0.12          # FastAPI File/UploadFile (PDF/doc imports)
 # ── ORM + migrations ─────────────────────────────────────
 sqlmodel>=0.0.22                  # pulls SQLAlchemy 2.x + Pydantic v2
 alembic>=1.13
+alembic-postgresql-enum>=1.10     # auto-manage PG enum create/reuse/alter in migrations
 psycopg[binary]>=3.2              # PostgreSQL driver (SQLAlchemy 'postgresql+psycopg')
 
 # ── Config ───────────────────────────────────────────────
