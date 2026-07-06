@@ -117,6 +117,19 @@ class ItemKind(str, enum.Enum):
     OTHER = "OTHER"
 
 
+class LotOrigin(str, enum.Enum):
+    """How a RawMaterialLot came to exist.
+
+    TRANSFORMED marks internally-produced stock (sliced/spliced veneer, cut
+    boards, graded veneer) — the lot codes the owner wants as traceability keys.
+    """
+
+    RECEIVED = "RECEIVED"        # purchased / goods receipt
+    TRANSFORMED = "TRANSFORMED"  # produced by an aux-line / grade / cut transform
+    ADJUSTED = "ADJUSTED"        # created via stock adjustment
+    OPENING = "OPENING"          # migrated opening balance
+
+
 class CalcMethod(str, enum.Enum):
     """BOM quantity basis (<- legacy bom_groups.calc_method)."""
 
