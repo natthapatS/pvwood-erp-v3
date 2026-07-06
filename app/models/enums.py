@@ -115,3 +115,31 @@ class ItemKind(str, enum.Enum):
     CONSUMABLE = "CONSUMABLE"
     PACKING = "PACKING"
     OTHER = "OTHER"
+
+
+class CalcMethod(str, enum.Enum):
+    """BOM quantity basis (<- legacy bom_groups.calc_method)."""
+
+    PER_SHEET = "PER_SHEET"
+    PER_PALLET = "PER_PALLET"
+
+
+class BOMType(str, enum.Enum):
+    """Assembly BOM (main-line product) vs transformation BOM (aux line)."""
+
+    ASSEMBLY = "ASSEMBLY"            # P01/P02/P37: board + veneers + glue -> product
+    TRANSFORMATION = "TRANSFORMATION"  # PUV/PVS/PSP: input lot(s) -> output lot(s)
+
+
+class BOMLineRole(str, enum.Enum):
+    """Role of a BOM line (<- legacy bom_lines seq semantics)."""
+
+    BOARD = "BOARD"              # seq 1 (base board)
+    FACE_VENEER = "FACE_VENEER"  # seq 2
+    BACK_VENEER = "BACK_VENEER"  # seq 3
+    FACE_GLUE = "FACE_GLUE"      # seq 4
+    BACK_GLUE = "BACK_GLUE"      # seq 5
+    PACKING = "PACKING"
+    INPUT = "INPUT"              # transformation input (aux lines)
+    OUTPUT = "OUTPUT"            # transformation output (aux lines)
+    OTHER = "OTHER"
