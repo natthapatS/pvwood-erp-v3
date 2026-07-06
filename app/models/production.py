@@ -134,6 +134,7 @@ class TransformationOutput(TimestampMixin, table=True):
     item_id: int = Field(foreign_key="item.id")
     grade: str | None = None
     output_lot_id: int | None = Field(default=None, foreign_key="raw_material_lot.id")
+    fg_lot_id: int | None = Field(default=None, foreign_key="fg_lot.id")  # PUV mode-A FG output
     qty: float
     uom: str = ""
     yield_pct: float | None = None
