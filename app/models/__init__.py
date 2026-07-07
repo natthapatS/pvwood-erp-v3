@@ -10,6 +10,7 @@ from sqlmodel import SQLModel  # re-export
 from app.models import core  # noqa: F401
 from app.models import (  # noqa: F401
     enums,
+    catalog,
     master,
     bom,
     procurement,
