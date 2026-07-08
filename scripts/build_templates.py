@@ -68,12 +68,6 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
          "BOOK", "FACE", "FSC100", "", "", "0.5", "1270", "2500", "45", "0", "5201",
          "1000", "SUP001", ""],
     ),
-    "Product": (
-        [("code", True, None), ("name", True, None), ("category_code", False, None),
-         ("thickness_mm", False, None), ("width_mm", False, None), ("length_mm", False, None),
-         ("pallet_qty", False, None), ("revision", False, None), ("notes", False, None)],
-        ["DS-OAK-3.2", "Oak Door Skin 3.2mm", "DOORSKIN", "3.2", "915", "2135", "300", "0", ""],
-    ),
     "GlueRecipe": (
         [("recipe_code", True, None), ("name", True, None), ("resin_ratio", False, None),
          ("hardener_ratio", False, None), ("extender_ratio", False, None),
@@ -103,15 +97,24 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
 }
 
 BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
-    # Linear (one row per product) BOMs — much easier to fill than long form.
-    "Panel_BOM": (
-        [("product_code", True, None), ("board_code", False, None),
-         ("face_veneer_code", False, None), ("back_veneer_code", False, None),
-         ("glue_recipe_code", False, None), ("face_glue_g", False, None),
-         ("back_glue_g", False, None), ("packing_code", False, None),
-         ("uv_topcoat_code", False, None), ("notes", False, None)],
-        ["PNL-OAK", "BRD-MDF-3.2", "VNR-OAK-A", "VNR-OAK-B", "GL-STD", "120", "120",
-         "PKG-CARTON", "", ""],
+    # Linear (one row per SKU) assembly BOM — owner's column layout. Also defines
+    # the product (sku_name / pieces_per_unit / dims), so there is no separate
+    # Product sheet: the importer upserts the Product then its BOM lines.
+    "Assembly_BOM": (
+        [("product_sku", True, None), ("sku_name", False, None),
+         ("pieces_per_unit", False, None), ("thickness_mm", False, None),
+         ("width_mm", False, None), ("length_mm", False, None),
+         ("base_board_code", False, None), ("base_board_qty", False, None),
+         ("face_veneer_code", False, None), ("face_veneer_qty", False, None),
+         ("face_glue_code", False, None), ("face_glue_qty", False, None),
+         ("back_veneer_code", False, None), ("back_veneer_qty", False, None),
+         ("back_glue_code", False, None), ("back_glue_qty", False, None),
+         ("UV_Topcoat_Code", False, None), ("Face_Topcoat_g/M2", False, None),
+         ("BackTopcoat_g/M2", False, None), ("packing_sku_code", False, None),
+         ("Notes", False, None)],
+        ["PNL-OAK", "Oak Overlay Panel", "300", "3.2", "915", "2135",
+         "BRD-MDF-3.2", "1", "VNR-OAK-A", "1", "GL-STD", "120",
+         "VNR-OAK-B", "1", "GL-STD", "120", "", "", "", "PKG-CARTON", ""],
     ),
     "DoorSkin_BOM": (
         [("product_code", True, None), ("board_code", True, None),
@@ -176,7 +179,8 @@ def build_master() -> Path:
         "★ = required column (shaded). Row 2 (grey italic) is an example — overwrite or delete it.",
         "Codes are your own identifiers; other sheets/BOMs reference rows by these codes.",
         "Fill reference sheets first (Species, ProductCategory, WarehouseLocation, Supplier),",
-        "then Item / Product / GlueRecipe, then GlueRecipe_Components, LogArrival, Log.",
+        "then Item / GlueRecipe, then GlueRecipe_Components, LogArrival, Log.",
+        "Products (finished SKUs) are defined in the BOM workbook's Assembly_BOM sheet, not here.",
         "Item.kind and Location.kind use dropdowns. Dimensions in mm. Costs per unit.",
         "Logs: enter any one unit of length/diameter/volume — the system converts the rest.",
     ])
@@ -192,14 +196,14 @@ def build_bom() -> Path:
     for name, (cols, eg) in BOM_SHEETS.items():
         _add_sheet(wb, name, cols, eg)
     _instructions(wb, "PVWood ERP v3 — BOMs", [
-        "★ = required. Fill master data first (items/products/glue recipes must already exist).",
-        "ONE ROW PER PRODUCT — fill the component code into each column.",
-        "Panel_BOM (main lines P01/P02/P37): board + face/back veneer + glue (g/face each",
-        "  side) + packing. Leave a cell blank if the product doesn't use it (e.g. no back",
-        "  veneer). uv_topcoat_code: fill only if the panel needs a PUV UV-topcoat pass.",
+        "★ = required. Fill master data first (items / glue recipes must already exist).",
+        "ONE ROW PER SKU. The row defines the product (sku_name, pieces_per_unit, dims) AND",
+        "its recipe. Fill each component's code + qty; leave a cell blank if unused (e.g. no",
+        "back veneer). Glue can differ face vs back (face_glue_code / back_glue_code).",
+        "UV_Topcoat_Code + Face/Back Topcoat g/M2: fill only if the SKU gets a PUV topcoat.",
         "DoorSkin_BOM (PUV Mode-A): board + primer (pass1 + pass2 grams/m²) + packing.",
         "Transform_PVS / Transform_PSP: recipe lines (kind = INPUT/OUTPUT/STEP), one row each.",
-        "All *_code cells reference codes you defined in the master-data workbook.",
+        "All *_code / *_sku cells reference codes you defined in the master-data workbook.",
     ])
     out = TEMPLATES_DIR / "pvwood_bom.xlsx"
     TEMPLATES_DIR.mkdir(exist_ok=True)
