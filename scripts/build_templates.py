@@ -103,15 +103,22 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
 }
 
 BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
-    "Assembly_BOM": (
-        [("product_code", True, None), ("seq", True, None), ("role", True, BOM_ROLES),
-         ("item_code", False, None), ("glue_recipe_code", False, None),
-         ("qty", False, None), ("usage_g_per_face", False, None),
-         ("usage_g_per_m2", False, None), ("qty_unit", False, None),
-         ("waste_factor", False, None), ("calc_method", False, CALC_METHODS),
+    # Linear (one row per product) BOMs — much easier to fill than long form.
+    "Panel_BOM": (
+        [("product_code", True, None), ("board_code", False, None),
+         ("face_veneer_code", False, None), ("back_veneer_code", False, None),
+         ("glue_recipe_code", False, None), ("face_glue_g", False, None),
+         ("back_glue_g", False, None), ("packing_code", False, None),
+         ("uv_topcoat_code", False, None), ("notes", False, None)],
+        ["PNL-OAK", "BRD-MDF-3.2", "VNR-OAK-A", "VNR-OAK-B", "GL-STD", "120", "120",
+         "PKG-CARTON", "", ""],
+    ),
+    "DoorSkin_BOM": (
+        [("product_code", True, None), ("board_code", True, None),
+         ("primer_code", False, None), ("primer_pass1_g", False, None),
+         ("primer_pass2_g", False, None), ("packing_code", False, None),
          ("notes", False, None)],
-        ["DS-OAK-3.2", "1", "BOARD", "BRD-MDF-3.2", "", "1", "", "", "pcs", "0.02",
-         "PER_SHEET", ""],
+        ["DS-OAK-3.2", "BRD-MDF-3.2", "PRM-UV", "80", "60", "PKG-CARTON", ""],
     ),
     "Transform_PVS": (
         [("recipe_code", True, None), ("name", True, None), ("kind", True, RECIPE_LINE_KINDS),
@@ -186,11 +193,13 @@ def build_bom() -> Path:
         _add_sheet(wb, name, cols, eg)
     _instructions(wb, "PVWood ERP v3 — BOMs", [
         "★ = required. Fill master data first (items/products/glue recipes must already exist).",
-        "Assembly_BOM: one row per BOM line. role dropdown; use item_code OR glue_recipe_code.",
-        "  Main-line products: BOARD + FACE/BACK_VENEER + FACE/BACK_GLUE + PACKING.",
-        "  PUV Mode-A door skins: BOARD + PRIMER (usage_g_per_m2, note pass1/pass2).",
-        "  A UV_TOPCOAT row on a P01 product flags the Mode-B PUV finishing detour.",
-        "Transform_PVS / Transform_PSP: one row per recipe line (kind = INPUT/OUTPUT/STEP).",
+        "ONE ROW PER PRODUCT — fill the component code into each column.",
+        "Panel_BOM (main lines P01/P02/P37): board + face/back veneer + glue (g/face each",
+        "  side) + packing. Leave a cell blank if the product doesn't use it (e.g. no back",
+        "  veneer). uv_topcoat_code: fill only if the panel needs a PUV UV-topcoat pass.",
+        "DoorSkin_BOM (PUV Mode-A): board + primer (pass1 + pass2 grams/m²) + packing.",
+        "Transform_PVS / Transform_PSP: recipe lines (kind = INPUT/OUTPUT/STEP), one row each.",
+        "All *_code cells reference codes you defined in the master-data workbook.",
     ])
     out = TEMPLATES_DIR / "pvwood_bom.xlsx"
     TEMPLATES_DIR.mkdir(exist_ok=True)
