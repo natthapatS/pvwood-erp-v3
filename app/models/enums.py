@@ -153,6 +153,9 @@ class BOMLineRole(str, enum.Enum):
     FACE_GLUE = "FACE_GLUE"      # seq 4
     BACK_GLUE = "BACK_GLUE"      # seq 5
     PACKING = "PACKING"
+    PRIMER = "PRIMER"            # PUV mode-A door skin (2-pass g/m²)
+    COATING = "COATING"
+    UV_TOPCOAT = "UV_TOPCOAT"    # PUV mode-B flag (queues a finishing job)
     INPUT = "INPUT"              # transformation input (aux lines)
     OUTPUT = "OUTPUT"            # transformation output (aux lines)
     OTHER = "OTHER"
