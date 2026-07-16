@@ -48,26 +48,8 @@ def run(path: str) -> None:
                 rep.bump("ProductCategory", "auto-created")
             return c
 
-        # ── GlueRecipe (recipes live in the BOM workbook now) ──
-        if "GlueRecipe" in wb.sheetnames:
-            for r, d in sheet_rows(wb["GlueRecipe"]):
-                code = s(d.get("recipe_code"))
-                if not code:
-                    rep.error("GlueRecipe", r, "missing recipe_code"); continue
-                o = recipes.get(code) or GlueRecipe(recipe_code=code, name=code)
-                o.name = s(d.get("name")) or o.name
-                o.resin_ratio = num(d.get("resin_ratio")) or 0.0
-                o.hardener_ratio = num(d.get("hardener_ratio")) or 0.0
-                o.extender_ratio = num(d.get("extender_ratio")) or 0.0
-                o.filler_ratio = num(d.get("filler_ratio")) or 0.0
-                o.water_ratio = num(d.get("water_ratio")) or 0.0
-                o.mix_time_min = intnum(d.get("mix_time_min")) or 0
-                o.notes = s(d.get("notes"))
-                if code not in recipes:
-                    ses.add(o); recipes[code] = o; rep.bump("GlueRecipe", "created")
-                else:
-                    rep.bump("GlueRecipe", "updated")
-            ses.flush()
+        # (Glue recipes are imported from the glue CSV export via import_glue_csv;
+        #  here we only RESOLVE face/back_glue_code against them.)
 
         # ── Assembly_BOM ──
         if "Assembly_BOM" in wb.sheetnames:

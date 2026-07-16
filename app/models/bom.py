@@ -17,21 +17,22 @@ from app.models.enums import BOMLineRole, BOMType, CalcMethod
 
 
 class GlueRecipe(TimestampMixin, table=True):
-    """Glue mix recipe (<- legacy glue_recipes): component ratios + links to items."""
+    """Glue mix recipe = a glue BOM: component quantities (kg) per batch + which
+    veneer/species/board it suits. Referenced by face/back_glue_code in Assembly_BOM."""
 
     __tablename__ = "glue_recipe"
 
     id: int | None = Field(default=None, primary_key=True)
     recipe_code: str = Field(unique=True, index=True, max_length=32)
     name: str
-    resin_ratio: float = 100.0
-    hardener_ratio: float = 20.0
-    extender_ratio: float = 0.0
-    filler_ratio: float = 0.0
-    water_ratio: float = 0.0
+    total_kg: float = 0.0
     mix_time_min: int = 20
-    # component role -> item_id map (<- legacy material_links JSON)
-    material_links: dict = Field(default_factory=dict, sa_type=JSONB)
+    # applicability (reference)
+    veneer_thickness: str | None = None
+    wood_species: str | None = None
+    core_board: str | None = None
+    # component -> kg per batch (e0_glue, latex_g312, flour, pigments, hardener, …)
+    components: dict = Field(default_factory=dict, sa_type=JSONB)
     notes: str = ""
     is_active: bool = True
 

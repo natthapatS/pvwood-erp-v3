@@ -62,15 +62,6 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
 }
 
 BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
-    # Glue recipes live here now (referenced by face/back_glue_code in Assembly_BOM).
-    # Components are just Items (kind=GLUE_COMPONENT); the recipe keeps its ratios.
-    "GlueRecipe": (
-        [("recipe_code", True, None), ("name", True, None), ("resin_ratio", False, None),
-         ("hardener_ratio", False, None), ("extender_ratio", False, None),
-         ("filler_ratio", False, None), ("water_ratio", False, None),
-         ("mix_time_min", False, None), ("notes", False, None)],
-        ["Glue 09", "Glue 09", "100", "20", "10", "5", "0", "20", ""],
-    ),
     # Linear (one row per SKU) assembly BOM — owner's column layout. Also defines
     # the product (sku_name / pieces_per_unit / dims), so there is no separate
     # Product sheet: the importer upserts the Product then its BOM lines.
