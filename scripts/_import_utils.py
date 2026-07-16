@@ -8,13 +8,18 @@ def s(v) -> str:
 
 
 def num(v) -> float | None:
-    v = s(v)
-    return float(v) if v else None
+    v = s(v).replace(",", "")
+    if not v or v in ("-", "NON", "N/A", "na"):
+        return None
+    try:
+        return float(v)
+    except ValueError:
+        return None
 
 
 def intnum(v) -> int | None:
-    v = s(v)
-    return int(float(v)) if v else None
+    f = num(v)
+    return int(f) if f is not None else None
 
 
 def sheet_rows(ws, example=None):
