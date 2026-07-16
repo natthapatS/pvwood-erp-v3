@@ -62,6 +62,10 @@ def _veneers(wb) -> dict[str, dict]:
             code = S(col(row, "code"))
             if not code:
                 continue
+            # "RG-" = ready-graded veneer: in v3 that's the SAME base item, tracked
+            # as an internally-produced lot (grade + lot code), not a separate item code.
+            if code.upper().startswith("RG-"):
+                continue
             out[code] = {
                 "code": code, "kind": "VENEER",
                 "name": S(col(row, "name")),
