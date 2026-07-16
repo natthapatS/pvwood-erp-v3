@@ -127,6 +127,9 @@ BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
     ),
 }
 
+# sheet name -> example row (used by importers to skip a leftover example row).
+EXAMPLES = {name: eg for name, (_c, eg) in {**MASTER_SHEETS, **BOM_SHEETS}.items()}
+
 
 def _add_sheet(wb: Workbook, name: str, columns, example) -> None:
     ws = wb.create_sheet(name)
@@ -137,14 +140,12 @@ def _add_sheet(wb: Workbook, name: str, columns, example) -> None:
         if required:
             cell.fill = REQ_FILL
         ws.column_dimensions[cell.column_letter].width = max(12, len(col) + 4)
-        if example and c <= len(example):
-            ws.cell(row=2, column=c, value=example[c - 1]).font = EG_FONT
         if dropdown:
             dv = DataValidation(type="list", formula1='"' + ",".join(dropdown) + '"',
                                 allow_blank=True)
             ws.add_data_validation(dv)
-            dv.add(f"{cell.column_letter}3:{cell.column_letter}2000")
-    ws.freeze_panes = "A2"
+            dv.add(f"{cell.column_letter}2:{cell.column_letter}2000")
+    ws.freeze_panes = "A2"  # data starts at row 2 (no inline example row)
 
 
 def _instructions(wb: Workbook, title: str, lines: list[str]) -> None:
