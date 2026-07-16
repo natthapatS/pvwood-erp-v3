@@ -1,15 +1,15 @@
-"""Domain 5 — Production.
+"""Domain 5 — Production (unified model for ALL lines).
 
-Main line: ProductionOrder (<- production_orders), ProductionBatch (<- batches),
-StationRecord (consolidates the 8 station logs; core columns + JSONB params).
+Every line (main P01/P02/P37 + aux PVS/PSP/PUV) runs the same engine: a
+ProductionBatch moves through the ordered departments of its line's `line_flow`
+(the Kanban board), and each stage is logged in StationRecord (the Station Hub).
+Movement is free-form (BatchMovement ledger); the line_flow just defines the
+expected route + Kanban columns. `current_department` is a catalog department code
+(string), so new stages (aux-line vat_heating/sawmill/… ) need no schema change.
 
-Aux lines:
-- PVS/PSP transformations — TransformationRun (header) + per-line structured
-  records LogProcessing (PVS) / SplicingRecord (PSP); genealogy via lot_linkage.
-- PUV is NOT a transform: Mode A = standard production (assembly BOM + rework
-  batch), Mode B = a FinishingJob queued off a UV_TOPCOAT BOM line on a P01 batch.
-
-See docs/production_logs.md.
+The aux "transformation" is therefore just a batch on the PVS/PSP line; the
+input→graded-output *yield* lives in the TransformationRecipe (domain 2b). See
+docs/production_logs.md.
 """
 from datetime import datetime
 
@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field
 
 from app.models.core import TimestampMixin, utcnow
-from app.models.enums import BatchStatus, OrderStatus, StationCode
+from app.models.enums import BatchStatus, OrderStatus
 
 
 class ProductionOrder(TimestampMixin, table=True):
@@ -48,22 +48,41 @@ class ProductionBatch(TimestampMixin, table=True):
     parent_batch_id: int | None = Field(default=None, foreign_key="production_batch.id")
     quantity: int
     line_code: str = Field(index=True)
-    current_station: StationCode | None = Field(default=None, index=True)
+    current_department: str | None = Field(default=None, index=True)  # catalog dept code
     status: BatchStatus = Field(default=BatchStatus.ACTIVE, index=True)
-    rework_pass: int = 0                         # >0 = rework batch (e.g. PUV C->A)
+    rework_pass: int = 0                          # >0 = rework batch (e.g. PUV C->A)
     split_reason: str = ""
     notes: str = ""
 
 
+class BatchMovement(TimestampMixin, table=True):
+    """Kanban movement ledger — one row per department-to-department move."""
+
+    __tablename__ = "batch_movement"
+
+    id: int | None = Field(default=None, primary_key=True)
+    batch_id: int = Field(foreign_key="production_batch.id", index=True)
+    from_department: str | None = None
+    to_department: str
+    quantity: int = 0
+    time_in_dept_min: int = 0
+    moved_by: str | None = None
+    notes: str = ""
+    moved_at: datetime = Field(
+        default_factory=utcnow, sa_type=DateTime(timezone=True), nullable=False
+    )
+
+
 class StationRecord(TimestampMixin, table=True):
-    """One record per batch per station pass. Core columns + JSONB `params`
-    for the station-specific fields (pressure/temp/grit/grade split/2-pass g/m²/…)."""
+    """One record per batch per stage pass (the Station Hub log). Core columns +
+    JSONB `params` for stage-specific fields (pressure/temp/grit/grade split /
+    2-pass g/m² / sawing loss / veneer m² / sheet count / …)."""
 
     __tablename__ = "station_record"
 
     id: int | None = Field(default=None, primary_key=True)
     batch_id: int = Field(foreign_key="production_batch.id", index=True)
-    station: StationCode = Field(index=True)
+    department: str = Field(index=True)          # catalog dept code (the stage)
     pcs_in: int = 0
     pcs_out: int = 0
     operator_1: str | None = None
@@ -77,10 +96,9 @@ class StationRecord(TimestampMixin, table=True):
     )
 
 
-# ── PVS / PSP transformations ──────────────────────────────────────────────
-
 class HeatingVat(TimestampMixin, table=True):
-    """PVS log-heating vat resource (3 vats)."""
+    """PVS log-heating vat resource (3 vats); referenced from a vat_heating
+    StationRecord's params."""
 
     __tablename__ = "heating_vat"
 
@@ -88,83 +106,4 @@ class HeatingVat(TimestampMixin, table=True):
     vat_number: int = Field(unique=True, index=True)
     label: str | None = None
     is_active: bool = True
-    notes: str = ""
-
-
-class TransformationRun(TimestampMixin, table=True):
-    """Header for one PVS/PSP run. Per-log / per-input detail lives in
-    LogProcessing / SplicingRecord; genealogy lives in lot_linkage."""
-
-    __tablename__ = "transformation_run"
-
-    id: int | None = Field(default=None, primary_key=True)
-    run_number: str = Field(unique=True, index=True, max_length=64)
-    line_code: str = Field(index=True)          # PVS/PSP
-    production_order_id: int | None = Field(default=None, foreign_key="production_order.id")
-    operator_1: str | None = None
-    operator_2: str | None = None
-    machine: str | None = None
-    status: OrderStatus = Field(default=OrderStatus.IN_PROGRESS)
-    run_at: datetime = Field(
-        default_factory=utcnow, sa_type=DateTime(timezone=True), nullable=False
-    )
-    notes: str = ""
-
-
-class LogProcessing(TimestampMixin, table=True):
-    """PVS per-log yield record (structured metrics for the log→veneer report)."""
-
-    __tablename__ = "log_processing"
-
-    id: int | None = Field(default=None, primary_key=True)
-    run_id: int = Field(foreign_key="transformation_run.id", index=True)
-    log_id: int = Field(foreign_key="log.id", index=True)
-    heating_vat_id: int | None = Field(default=None, foreign_key="heating_vat.id")
-    flitch_length_m: float | None = None
-    flitch_diameter_m: float | None = None
-    sawing_loss: float | None = None
-    veneer_thickness_mm: float | None = None
-    sliced_veneer_m2: float | None = None
-    trimmed_veneer_m2: float | None = None
-    final_yield_pct: float | None = None
-    output_lot_id: int | None = Field(default=None, foreign_key="raw_material_lot.id")
-    params: dict = Field(default_factory=dict, sa_type=JSONB)
-    notes: str = ""
-
-
-class SplicingRecord(TimestampMixin, table=True):
-    """PSP per-input record. `grade` is set later at the grading step."""
-
-    __tablename__ = "splicing_record"
-
-    id: int | None = Field(default=None, primary_key=True)
-    run_id: int = Field(foreign_key="transformation_run.id", index=True)
-    input_lot_id: int = Field(foreign_key="raw_material_lot.id", index=True)
-    trim_loss: float | None = None
-    sheet_count_4x8: int | None = None
-    output_lot_id: int | None = Field(default=None, foreign_key="raw_material_lot.id")
-    grade: str | None = None
-    params: dict = Field(default_factory=dict, sa_type=JSONB)
-    notes: str = ""
-
-
-# ── PUV Mode-B finishing job (UV topcoat detour) ───────────────────────────
-
-class FinishingJob(TimestampMixin, table=True):
-    """A finishing detour (PUV UV-topcoat) queued off a UV_TOPCOAT BOM line when a
-    P01 batch reaches grading; the batch returns to P01 grading when DONE."""
-
-    __tablename__ = "finishing_job"
-
-    id: int | None = Field(default=None, primary_key=True)
-    batch_id: int = Field(foreign_key="production_batch.id", index=True)
-    line_code: str = "PUV"
-    job_type: str = "UV_TOPCOAT"
-    sides: int | None = None                     # 1 or 2
-    status: str = Field(default="QUEUED", index=True)   # QUEUED | IN_PROGRESS | DONE
-    requested_at: datetime = Field(
-        default_factory=utcnow, sa_type=DateTime(timezone=True), nullable=False
-    )
-    started_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     notes: str = ""

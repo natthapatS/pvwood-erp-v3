@@ -22,7 +22,7 @@ ITEM_KINDS = [e.value for e in ItemKind]
 BOM_ROLES = [e.value for e in BOMLineRole]
 CALC_METHODS = [e.value for e in CalcMethod]
 LOCATION_KINDS = ["WAREHOUSE", "FC", "WIP", "FG", "STAGING"]
-RECIPE_LINE_KINDS = ["INPUT", "OUTPUT", "STEP"]
+RECIPE_LINE_KINDS = ["INPUT", "OUTPUT"]   # stages now live in the catalog line_flow
 
 REQ_FILL = PatternFill("solid", fgColor="FCE4E4")   # light red = required
 HDR_FONT = Font(bold=True)

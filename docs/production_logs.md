@@ -52,19 +52,28 @@ station-specific fields. Grading's grade split feeds FG lots + TAS 2 grade costi
   2-side) → **return to P01** for grading + packing → FGWH.
 - Input may be a **raw lot** or a **P01 WIP batch** (polymorphic input).
 
-## Confirmed modeling decisions
-1. **Per-step runs** — a transformation run has ordered steps, each recording
-   input/output qty + **loss**. (Sawmill loss is itemized.)
-2. **Logs intake in m³**; yield reported as m²/m³.
-3. **PUV = one flexible run type** with a `mode` flag + optional fields (not two shapes).
-4. **Output lots:** PVS → new lot under the matching bought-veneer item code; PSP →
-   new graded-pcs lots; both trace to input lots via genealogy.
+## UNIFIED MODEL (owner decision 2026-07 — supersedes the transformation-run design)
 
-## Proposed model (Production domain + transformations)
-- `ProductionOrder`, `ProductionBatch`, `StationRecord` (main-line; JSONB params).
-- `TransformationRun` (line, mode, operators, machine, status, date) →
-  `TransformationStep` (seq, name, in/out qty + uom, **loss**, params) +
-  `TransformationInput` (input RawMaterialLot **or** WIP batch, qty, uom) +
-  `TransformationOutput` (item, grade, new RawMaterialLot **or** FGLot, qty, uom, yield).
-- Genealogy: outputs ← inputs via `LotLinkage` (domain 6). UoM conversion + yield at
-  the run/step level.
+Every line — main (P01/P02/P37) **and aux (PVS/PSP/PUV)** — runs **one production
+engine**: a `ProductionBatch` moves through the ordered departments of its line's
+`line_flow` (the **Kanban** board), and each stage is logged in `StationRecord` (the
+**Station Hub**). Movement is **free-form** (`BatchMovement` ledger); `line_flow` just
+defines the expected route + Kanban columns.
+
+- **Aux stages are catalog departments + line_flow** (seeded, DB-editable):
+  - PVS: `vat_heating → sawmill → slicing → double_edge_trim` (grade folded into trim)
+  - PSP: `trimming → edge_gluing → splicing → repair → grading`
+  - PUV Mode A: `sealer → primer_1 → primer_2 → grading → packing → fg_warehouse`
+    (3 separate coat stations, each logged per pass)
+  - PUV Mode B: a single `uv_topcoat` station (P01 panels detour in from grading, back out)
+- `current_department` / `StationRecord.department` are catalog dept **strings** (not a
+  fixed enum), so new stages need no schema change.
+- **The separate transformation-run tables were dropped** (`TransformationRun`,
+  `LogProcessing`, `SplicingRecord`, `FinishingJob`). Per-stage yields/losses (sawing
+  loss, veneer m²/log, sheet count, 2-pass g/m²) live in `StationRecord.params`.
+- **Yield recipe kept** (`TransformationRecipe`/`TransformationRecipeLine`, domain 2b):
+  the one-input → many-graded-outputs shape a normal product BOM can't express
+  (log in → veneer grades A/B/C out, with expected yield%). This is the `Transform_PVS/PSP`
+  template (INPUT/OUTPUT rows only — stages moved to the catalog).
+- Genealogy: log/lot → batch → output veneer lots via `LotLinkage` (domain 6).
+- Logs still intake in **m³**; `Log`/`LogArrival`/`LogDocument` + `HeatingVat` kept.

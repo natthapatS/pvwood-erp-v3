@@ -32,12 +32,33 @@ DEPARTMENTS = [
     ("packing", "Packing", "bi-box", True, 9),
     ("fg_receiving", "FG Receiving", "bi-inbox", True, 10),
     ("fg_warehouse", "FG Warehouse", "bi-building", True, 11),
+    # ── Aux-line stages (PVS / PSP / PUV) ──
+    ("vat_heating", "Vat Heating", "bi-thermometer-high", False, 20),
+    ("sawmill", "Sawmill", "bi-scissors", False, 21),
+    ("slicing", "Slicing", "bi-layers-half", False, 22),
+    ("double_edge_trim", "Double-Edge Trim + Grade", "bi-bounding-box", False, 23),
+    ("trimming", "Trimming", "bi-scissors", False, 24),
+    ("edge_gluing", "Edge Gluing", "bi-bandaid", False, 25),
+    ("splicing", "Splicing", "bi-union", False, 26),
+    ("sealer", "Sealer", "bi-droplet-half", False, 27),
+    ("primer_1", "Primer Coat 1", "bi-brush", False, 28),
+    ("primer_2", "Primer Coat 2", "bi-brush", False, 29),
+    ("uv_topcoat", "UV Topcoat", "bi-brightness-high", False, 30),
 ]
 
 _MAIN_FLOW = ["laminating", "cold_press", "hot_press", "bleach", "repair",
               "sanding", "grading", "packing", "fg_warehouse"]
-# Aux lines (PUV/PVS/PSP) intentionally have no flow (transform/request hubs).
-FLOW = {"FC": ["fc"], "P01": _MAIN_FLOW, "P02": _MAIN_FLOW, "P37": _MAIN_FLOW}
+# Every line now has a flow (unified production model). PUV's flow is Mode A
+# (door skin); its uv_topcoat station (Mode B, a P01 detour) is seeded separately.
+FLOW = {
+    "FC": ["fc"],
+    "P01": _MAIN_FLOW, "P02": _MAIN_FLOW, "P37": _MAIN_FLOW,
+    "PVS": ["vat_heating", "sawmill", "slicing", "double_edge_trim"],
+    "PSP": ["trimming", "edge_gluing", "splicing", "repair", "grading"],
+    "PUV": ["sealer", "primer_1", "primer_2", "grading", "packing", "fg_warehouse"],
+}
+# Stations that exist on a line but are NOT part of its sequential flow.
+EXTRA_STATIONS = [("PUV", "uv_topcoat")]  # Mode-B UV topcoat (P01 batches detour here)
 
 
 def seed() -> None:
@@ -100,6 +121,17 @@ def seed() -> None:
             if not existing:
                 s.add(Station(line_code=None, department_code=dept,
                               label=dept_label.get(dept, dept)))
+        # extra (non-flow) stations, e.g. PUV uv_topcoat (Mode-B detour)
+        for line_code, dept in EXTRA_STATIONS:
+            existing = s.exec(
+                select(Station).where(
+                    Station.line_code == line_code,
+                    Station.department_code == dept,
+                )
+            ).first()
+            if not existing:
+                s.add(Station(line_code=line_code, department_code=dept,
+                              label=f"{line_code} · {dept_label.get(dept, dept)}"))
         s.commit()
 
     print("catalog seeded")
