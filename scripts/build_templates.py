@@ -82,6 +82,20 @@ BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
          "BRD-MDF-3.2", "1", "VNR-OAK-A", "1", "GL-STD", "120",
          "VNR-OAK-B", "1", "GL-STD", "120", "", "", "", "", "PKG-CARTON", ""],
     ),
+    # PUV Mode-A primed door skins: base board + sealer + 2 primer passes + packing.
+    "DoorSkin_BOM": (
+        [("product_sku", True, None), ("sku_name", False, None),
+         ("pieces_per_unit", False, None), ("thickness_mm", False, None),
+         ("width_mm", False, None), ("length_mm", False, None),
+         ("base_board_code", False, None), ("base_board_qty", False, None),
+         ("sealer_code", False, None), ("sealer_g_m2", False, None),
+         ("primer1_code", False, None), ("primer1_g_m2", False, None),
+         ("primer2_code", False, None), ("primer2_g_m2", False, None),
+         ("packing_sku_code", False, None), ("Notes", False, None)],
+        ["SPM292701", "MDF 2.9 Std Primed 620x2045", "300", "2.9", "620", "2045",
+         "BMCF2501", "1", "01-MAT-PUV-004", "50", "010-MAT-PUV-002", "40",
+         "010-MAT-PUV-002", "30", "PKG-CARTON", ""],
+    ),
     "Transform_PVS": (
         [("recipe_code", True, None), ("name", True, None), ("kind", True, RECIPE_LINE_KINDS),
          ("seq", False, None), ("item_code", False, None), ("role", False, None),
@@ -156,16 +170,15 @@ def build_bom() -> Path:
     for name, (cols, eg) in BOM_SHEETS.items():
         _add_sheet(wb, name, cols, eg)
     _instructions(wb, "PVWood ERP v3 — BOMs", [
-        "★ = required. Import master data first (items must exist). GlueRecipe is on its own",
-        "sheet here; face/back_glue_code in Assembly_BOM reference these recipe codes.",
-        "ONE ROW PER SKU. The row defines the product (sku_name, pieces_per_unit, dims) AND",
-        "its recipe. Fill each component's code + qty; leave a cell blank if unused (e.g. no",
-        "back veneer). Glue can differ face vs back (face_glue_code / back_glue_code).",
-        "Coating (face/back _coating_code + g/M2) = a primer (door skins) OR a UV topcoat",
-        "  (panels). Fill only the side(s) that get coated.",
-        "Transform_PVS / Transform_PSP: recipe lines (kind = INPUT/OUTPUT), one row each —",
-        "  one INPUT (log/veneer) + one OUTPUT per grade. Stages are in the catalog, not here.",
-        "Item codes reference the master-data Item sheet; glue codes reference GlueRecipe above.",
+        "★ = required. Import master data + glue/board/veneer CSVs first (codes must exist).",
+        "Assembly_BOM — ONE ROW PER SKU (veneered panels). Board + face/back veneer + glue",
+        "  (face/back can differ) + packing. For UV-topcoat panels (PUV Model B), also fill the",
+        "  face/back coating columns. Leave a cell blank if unused.",
+        "DoorSkin_BOM — PUV Model A primed door skins: base board + sealer + primer pass1/pass2",
+        "  (g/m² each) + packing. One row per door-skin SKU.",
+        "Transform_PVS / Transform_PSP: recipe lines (kind = INPUT/OUTPUT), one INPUT (log/veneer)",
+        "  + one OUTPUT per grade. Produced veneers are auto-created. Stages live in the catalog.",
+        "Item codes reference items imported from your master-data / CSV exports.",
     ])
     out = TEMPLATES_DIR / "pvwood_bom.xlsx"
     TEMPLATES_DIR.mkdir(exist_ok=True)

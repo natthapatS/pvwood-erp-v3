@@ -150,6 +150,73 @@ def run(path: str) -> None:
                 rep.bump("BOM lines", "written", lines)
             ses.flush()
 
+        # ── DoorSkin_BOM (PUV Mode-A: board + sealer + 2 primer passes + packing) ──
+        if "DoorSkin_BOM" in wb.sheetnames:
+            for r, d in sheet_rows(wb["DoorSkin_BOM"]):
+                sku = s(d.get("product_sku"))
+                if not sku:
+                    rep.error("DoorSkin_BOM", r, "missing product_sku"); continue
+
+                def ds_ref(col):
+                    code = s(d.get(col))
+                    if not code:
+                        return None, True
+                    it = items.get(code)
+                    if not it:
+                        rep.error("DoorSkin_BOM", r, f"unknown item code '{code}' ({col})")
+                        return None, False
+                    return it, True
+
+                board, o1 = ds_ref("base_board_code")
+                sealer, o2 = ds_ref("sealer_code")
+                p1, o3 = ds_ref("primer1_code")
+                p2, o4 = ds_ref("primer2_code")
+                pk, o5 = ds_ref("packing_sku_code")
+                if not all([o1, o2, o3, o4, o5]):
+                    continue
+
+                cat = get_category("Door Skin")
+                p = products.get(sku) or Product(code=sku, name=s(d.get("sku_name")) or sku)
+                p.name = s(d.get("sku_name")) or p.name
+                p.category_id = cat.id if cat else None
+                p.thickness_mm = num(d.get("thickness_mm"))
+                p.width_mm = num(d.get("width_mm")); p.length_mm = num(d.get("length_mm"))
+                p.pallet_qty = intnum(d.get("pieces_per_unit")) or 1
+                p.notes = s(d.get("Notes"))
+                if sku not in products:
+                    ses.add(p); products[sku] = p; rep.bump("DoorSkin Product", "created")
+                else:
+                    rep.bump("DoorSkin Product", "updated")
+                ses.flush()
+
+                hdr = ses.exec(select(BOMHeader).where(
+                    BOMHeader.product_id == p.id, BOMHeader.revision == 0)).first()
+                if not hdr:
+                    hdr = BOMHeader(product_id=p.id, bom_type=BOMType.ASSEMBLY)
+                    ses.add(hdr); ses.flush()
+                ses.exec(delete(BOMItem).where(BOMItem.bom_header_id == hdr.id))
+                ses.exec(delete(BOMConsumable).where(BOMConsumable.bom_header_id == hdr.id))
+
+                seq = 0
+                if board:
+                    seq += 1
+                    ses.add(BOMItem(bom_header_id=hdr.id, item_id=board.id, seq=seq,
+                                    role=BOMLineRole.BOARD, qty_override=num(d.get("base_board_qty"))))
+                for it, gcol, role, note in [
+                        (sealer, "sealer_g_m2", BOMLineRole.COATING, "sealer"),
+                        (p1, "primer1_g_m2", BOMLineRole.PRIMER, "pass1"),
+                        (p2, "primer2_g_m2", BOMLineRole.PRIMER, "pass2")]:
+                    if it:
+                        seq += 1
+                        ses.add(BOMConsumable(bom_header_id=hdr.id, item_id=it.id, seq=seq,
+                                              role=role, usage_g_per_face=num(d.get(gcol)), notes=note))
+                if pk:
+                    seq += 1
+                    ses.add(BOMConsumable(bom_header_id=hdr.id, item_id=pk.id, seq=seq,
+                                          role=BOMLineRole.PACKING, qty=1))
+                rep.bump("DoorSkin lines", "written", seq)
+            ses.flush()
+
         # ── Transform_PVS / Transform_PSP ──
         for sheet, line_code in [("Transform_PVS", "PVS"), ("Transform_PSP", "PSP")]:
             if sheet not in wb.sheetnames:
