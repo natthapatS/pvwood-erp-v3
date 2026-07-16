@@ -30,3 +30,7 @@ Thumbs.db
 
 # ── Generated ────────────────────────────────────────────
 /exports/
+
+# ── Workbooks (regenerate blanks via scripts/build_templates.py; filled data
+#    stays local, out of git) ──
+/templates/*.xlsx
