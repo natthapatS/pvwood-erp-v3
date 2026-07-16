@@ -30,15 +30,6 @@ EG_FONT = Font(italic=True, color="888888")
 
 # sheet -> (columns, example_row). A column is (name, required, dropdown|None).
 MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
-    "Species": (
-        [("code", True, None), ("common_name", True, None),
-         ("botanical_name", False, None), ("notes", False, None)],
-        ["OAK", "White Oak", "Quercus alba", ""],
-    ),
-    "ProductCategory": (
-        [("code", True, None), ("name", True, None), ("description", False, None)],
-        ["DOORSKIN", "Door Skin", "Primed/UV door skins"],
-    ),
     "WarehouseLocation": (
         [("code", True, None), ("name", True, None),
          ("kind", False, LOCATION_KINDS), ("notes", False, None)],
@@ -58,7 +49,7 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
     "Item": (
         [("code", True, None), ("kind", True, ITEM_KINDS), ("name", True, None),
          ("name_th", False, None), ("name_zh", False, None), ("unit", True, None),
-         ("species_code", False, None), ("grade", False, None), ("cut_type", False, None),
+         ("species", False, None), ("grade", False, None), ("cut_type", False, None),
          ("matching", False, None), ("face_back", False, None), ("fsc", False, None),
          ("board_type", False, None), ("glue_type", False, None),
          ("thickness_mm", False, None), ("width_mm", False, None), ("length_mm", False, None),
@@ -87,7 +78,7 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
     ),
     "Log": (
         [("log_number", True, None), ("arrival_code", True, None), ("log_code", True, None),
-         ("species_code", False, None), ("grade", False, None),
+         ("species", False, None), ("grade", False, None),
          ("length_in", False, None), ("length_m", False, None),
          ("diameter_in", False, None), ("diameter_m", False, None),
          ("volume_ft3", False, None), ("volume_m3", False, None), ("notes", False, None)],
@@ -102,6 +93,7 @@ BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
     # Product sheet: the importer upserts the Product then its BOM lines.
     "Assembly_BOM": (
         [("product_sku", True, None), ("sku_name", False, None),
+         ("product_category", False, None),
          ("pieces_per_unit", False, None), ("thickness_mm", False, None),
          ("width_mm", False, None), ("length_mm", False, None),
          ("base_board_code", False, None), ("base_board_qty", False, None),
@@ -112,7 +104,7 @@ BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
          ("face_coating_code", False, None), ("Face_Coating_g/M2", False, None),
          ("back_coating_code", False, None), ("Back_Coating_g/M2", False, None),
          ("packing_sku_code", False, None), ("Notes", False, None)],
-        ["PNL-OAK", "Oak Overlay Panel", "300", "3.2", "915", "2135",
+        ["PNL-OAK", "Oak Overlay Panel", "Overlay Panel", "300", "3.2", "915", "2135",
          "BRD-MDF-3.2", "1", "VNR-OAK-A", "1", "GL-STD", "120",
          "VNR-OAK-B", "1", "GL-STD", "120", "", "", "", "", "PKG-CARTON", ""],
     ),
@@ -171,9 +163,10 @@ def build_master() -> Path:
     _instructions(wb, "PVWood ERP v3 — Master Data", [
         "★ = required column (shaded). Row 2 (grey italic) is an example — overwrite or delete it.",
         "Codes are your own identifiers; other sheets/BOMs reference rows by these codes.",
-        "Fill reference sheets first (Species, ProductCategory, WarehouseLocation, Supplier),",
-        "then Item / GlueRecipe, then GlueRecipe_Components, LogArrival, Log.",
+        "Fill reference sheets first (WarehouseLocation, Supplier), then Item / GlueRecipe,",
+        "then GlueRecipe_Components, LogArrival, Log.",
         "Products (finished SKUs) are defined in the BOM workbook's Assembly_BOM sheet, not here.",
+        "Type species freely on Item/Log (e.g. OAK); the system auto-masters the species list.",
         "Item.kind and Location.kind use dropdowns. Dimensions in mm. Costs per unit.",
         "Logs: enter any one unit of length/diameter/volume — the system converts the rest.",
     ])
