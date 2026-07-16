@@ -25,7 +25,8 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
-~$*                 # Office/Excel lock files
+# Office/Excel lock files
+~$*
 
 # ── Generated ────────────────────────────────────────────
 /exports/
