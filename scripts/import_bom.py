@@ -15,7 +15,7 @@ from openpyxl import load_workbook
 from sqlmodel import Session, delete, select
 
 from app.models.bom import BOMConsumable, BOMHeader, BOMItem, GlueRecipe
-from app.models.enums import BOMLineRole, BOMType
+from app.models.enums import BOMLineRole, BOMType, ItemKind
 from app.models.master import Item, Product, ProductCategory
 from app.models.transformation_recipe import TransformationRecipe, TransformationRecipeLine
 from app.db import engine
@@ -174,11 +174,26 @@ def run(path: str) -> None:
                     TransformationRecipeLine.recipe_id == rec.id))
                 for r, d in rlist:
                     ic = s(d.get("item_code"))
+                    kind = s(d.get("kind")).upper() or "OUTPUT"
                     it = items.get(ic) if ic else None
                     if ic and not it:
-                        rep.error(sheet, r, f"unknown item_code '{ic}'"); continue
+                        if kind == "OUTPUT":   # produced (sliced/spliced) veneer -> create item
+                            it = Item(
+                                code=ic, kind=ItemKind.VENEER, name=ic,
+                                unit=s(d.get("uom")) or "",
+                                grade=s(d.get("grade")) or None,
+                                cut_type=s(d.get("cut")) or None,
+                                matching=s(d.get("mat")) or None,
+                                fsc=s(d.get("FSC")) or s(d.get("fsc")) or None,
+                                thickness_mm=num(d.get("Thickness_mm")) or num(d.get("thickness_mm")),
+                                width_mm=num(d.get("width_mm")) or num(d.get("Width_mm")),
+                                length_mm=num(d.get("length_mm")) or num(d.get("Length_mm")))
+                            ses.add(it); ses.flush(); items[ic] = it
+                            rep.bump(sheet, "produced-veneer+")
+                        else:
+                            rep.error(sheet, r, f"unknown item_code '{ic}'"); continue
                     ses.add(TransformationRecipeLine(
-                        recipe_id=rec.id, kind=s(d.get("kind")).upper() or "STEP",
+                        recipe_id=rec.id, kind=kind,
                         seq=intnum(d.get("seq")) or 0,
                         item_id=it.id if it else None, role=s(d.get("role")) or None,
                         qty=num(d.get("qty")), uom=s(d.get("uom")) or None,
