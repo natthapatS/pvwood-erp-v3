@@ -111,6 +111,7 @@ class ItemKind(str, enum.Enum):
 
     VENEER = "VENEER"
     BOARD = "BOARD"
+    LOG = "LOG"                  # a log type; each physical log is a lot of it
     GLUE_COMPONENT = "GLUE_COMPONENT"
     CONSUMABLE = "CONSUMABLE"
     PACKING = "PACKING"

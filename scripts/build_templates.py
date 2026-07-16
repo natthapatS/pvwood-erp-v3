@@ -59,35 +59,18 @@ MASTER_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
          "BOOK", "FACE", "FSC100", "", "", "0.5", "1270", "2500", "45", "0", "5201",
          "1000", "SUP001", ""],
     ),
+}
+
+BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
+    # Glue recipes live here now (referenced by face/back_glue_code in Assembly_BOM).
+    # Components are just Items (kind=GLUE_COMPONENT); the recipe keeps its ratios.
     "GlueRecipe": (
         [("recipe_code", True, None), ("name", True, None), ("resin_ratio", False, None),
          ("hardener_ratio", False, None), ("extender_ratio", False, None),
          ("filler_ratio", False, None), ("water_ratio", False, None),
          ("mix_time_min", False, None), ("notes", False, None)],
-        ["GL-STD", "Standard UF", "100", "20", "10", "5", "0", "20", ""],
+        ["Glue 09", "Glue 09", "100", "20", "10", "5", "0", "20", ""],
     ),
-    "GlueRecipe_Components": (
-        [("recipe_code", True, None), ("component_role", True, None),
-         ("item_code", True, None), ("ratio", False, None)],
-        ["GL-STD", "resin", "GLU-UF-RESIN", "100"],
-    ),
-    "LogArrival": (
-        [("arrival_code", True, None), ("arrival_date", False, None),
-         ("supplier_code", False, None), ("container_ref", False, None), ("notes", False, None)],
-        ["ARR-2026-001", "2026-07-01", "SUP001", "MSKU1234567", ""],
-    ),
-    "Log": (
-        [("log_number", True, None), ("arrival_code", True, None), ("log_code", True, None),
-         ("species", False, None), ("grade", False, None),
-         ("length_in", False, None), ("length_m", False, None),
-         ("diameter_in", False, None), ("diameter_m", False, None),
-         ("volume_ft3", False, None), ("volume_m3", False, None), ("notes", False, None)],
-        ["LOG-0001", "ARR-2026-001", "OAK-A", "OAK", "A", "98", "2.5", "24", "0.61",
-         "", "1.2", "photo in notes"],
-    ),
-}
-
-BOM_SHEETS: dict[str, tuple[list[tuple[str, bool, list | None]], list]] = {
     # Linear (one row per SKU) assembly BOM — owner's column layout. Also defines
     # the product (sku_name / pieces_per_unit / dims), so there is no separate
     # Product sheet: the importer upserts the Product then its BOM lines.
@@ -162,14 +145,13 @@ def build_master() -> Path:
     for name, (cols, eg) in MASTER_SHEETS.items():
         _add_sheet(wb, name, cols, eg)
     _instructions(wb, "PVWood ERP v3 — Master Data", [
-        "★ = required column (shaded). Row 2 (grey italic) is an example — overwrite or delete it.",
-        "Codes are your own identifiers; other sheets/BOMs reference rows by these codes.",
-        "Fill reference sheets first (WarehouseLocation, Supplier), then Item / GlueRecipe,",
-        "then GlueRecipe_Components, LogArrival, Log.",
-        "Products (finished SKUs) are defined in the BOM workbook's Assembly_BOM sheet, not here.",
-        "Type species freely on Item/Log (e.g. OAK); the system auto-masters the species list.",
+        "★ = required column (shaded). Data starts on row 2.",
+        "Codes are your own identifiers; the BOM workbook references items by these codes.",
+        "Fill WarehouseLocation + Supplier first, then Item (all RM/consumables: boards,",
+        "veneers, glue components, packing, and LOGS — kind=LOG, e.g. LRO4S).",
+        "Products (finished SKUs) + glue recipes live in the BOM workbook, not here.",
+        "Type species freely on Item (e.g. OAK); the system auto-masters the species list.",
         "Item.kind and Location.kind use dropdowns. Dimensions in mm. Costs per unit.",
-        "Logs: enter any one unit of length/diameter/volume — the system converts the rest.",
     ])
     out = TEMPLATES_DIR / "pvwood_master_data.xlsx"
     TEMPLATES_DIR.mkdir(exist_ok=True)
@@ -183,15 +165,16 @@ def build_bom() -> Path:
     for name, (cols, eg) in BOM_SHEETS.items():
         _add_sheet(wb, name, cols, eg)
     _instructions(wb, "PVWood ERP v3 — BOMs", [
-        "★ = required. Fill master data first (items / glue recipes must already exist).",
+        "★ = required. Import master data first (items must exist). GlueRecipe is on its own",
+        "sheet here; face/back_glue_code in Assembly_BOM reference these recipe codes.",
         "ONE ROW PER SKU. The row defines the product (sku_name, pieces_per_unit, dims) AND",
         "its recipe. Fill each component's code + qty; leave a cell blank if unused (e.g. no",
         "back veneer). Glue can differ face vs back (face_glue_code / back_glue_code).",
         "Coating (face/back _coating_code + g/M2) = a primer (door skins) OR a UV topcoat",
-        "  (panels). Fill only the side(s) that get coated — e.g. a door skin = base board +",
-        "  face_coating_code + packing; a UV-topcoat panel = its normal rows + a coating.",
-        "Transform_PVS / Transform_PSP: recipe lines (kind = INPUT/OUTPUT/STEP), one row each.",
-        "All *_code / *_sku cells reference codes you defined in the master-data workbook.",
+        "  (panels). Fill only the side(s) that get coated.",
+        "Transform_PVS / Transform_PSP: recipe lines (kind = INPUT/OUTPUT), one row each —",
+        "  one INPUT (log/veneer) + one OUTPUT per grade. Stages are in the catalog, not here.",
+        "Item codes reference the master-data Item sheet; glue codes reference GlueRecipe above.",
     ])
     out = TEMPLATES_DIR / "pvwood_bom.xlsx"
     TEMPLATES_DIR.mkdir(exist_ok=True)
